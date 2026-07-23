@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "autocannon": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/autocannon": "^7.12.7"
+  }
+}
