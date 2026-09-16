@@ -48,13 +48,13 @@ flowchart TB
     end
 
     subgraph QueueLayer ["State & Message Broker (Redis)"]
-        BullQueue[("📥 BullMQ 'jobs' Queue<br/>ZSETs + Hashes")]
-        RedisCache[("🗄️ Redis Result Store<br/>TTL: 1hr")]
+        BullQueue[("📥 BullMQ Jobs Queue<br/>ZSETs + Hashes")]
+        RedisCache[("🗄️ Redis Result Store<br/>TTL 1hr")]
         RedisEvents[("📢 Redis Stream Events")]
     end
 
     subgraph WorkerLayer ["Distributed Worker Pool"]
-        Worker["⚙️ Background Worker (Concurrency: 5)"]
+        Worker["⚙️ Background Worker (Concurrency 5)"]
         TranscriptSvc["📜 YouTube Transcript Fetcher"]
         Classifier["🏷️ Video Classifier (Coding vs General)"]
         FanOut["⚡ Parallel Promise.all Fan-Out"]
@@ -67,32 +67,32 @@ flowchart TB
     end
 
     %% Flow Connections
-    UI -->|1. POST /job { url }| API
+    UI -->|"1. POST /job (url)"| API
     API --> RateLimiter
     RateLimiter --> CacheCheck
-    CacheCheck -- Cache Hit --> UI
-    CacheCheck -- Cache Miss -->|2. jobQueue.add()| BullQueue
-    API -->|3. 202 Accepted { jobId }| UI
+    CacheCheck -- "Cache Hit" --> UI
+    CacheCheck -- "Cache Miss" -->|"2. jobQueue.add()"| BullQueue
+    API -->|"3. 202 Accepted (jobId)"| UI
 
-    UI -->|4. Connect SSE| SSEEndpoint
-    BullQueue -->|5. Atomically Pop Job (Lua)| Worker
+    UI -->|"4. Connect SSE"| SSEEndpoint
+    BullQueue -->|"5. Atomically Pop Job (Lua)"| Worker
     
     Worker --> TranscriptSvc
     TranscriptSvc --> Classifier
     Classifier --> FanOut
 
-    FanOut -->|Task 1: Summary| GeminiPool
-    FanOut -->|Task 2: Mind Map JSON| GeminiPool
-    FanOut -->|Task 3: Assessments/LeetCode| GeminiPool
-    FanOut -->|Task 4: Related Problems| GeminiPool
-    FanOut -->|Task 5: Chunk & Embed| ChromaStore
+    FanOut -->|"Task 1: Summary"| GeminiPool
+    FanOut -->|"Task 2: Mind Map JSON"| GeminiPool
+    FanOut -->|"Task 3: Assessments/LeetCode"| GeminiPool
+    FanOut -->|"Task 4: Related Problems"| GeminiPool
+    FanOut -->|"Task 5: Chunk & Embed"| ChromaStore
 
-    Worker -.->|6. Emit Incremental Progress (48%→80%)| SSEEndpoint
-    SSEEndpoint -.->|7. Real-Time Updates| SSEListener
+    Worker -.->|"6. Emit Progress (48% to 80%)"| SSEEndpoint
+    SSEEndpoint -.->|"7. Real-Time Updates"| SSEListener
 
-    Worker -->|8. Store Completed Result| RedisCache
-    Worker -->|9. Save History Record| MongoDB
-    Worker -.->|10. 100% Progress Done| SSEEndpoint
+    Worker -->|"8. Store Completed Result"| RedisCache
+    Worker -->|"9. Save History Record"| MongoDB
+    Worker -.->|"10. 100% Progress Done"| SSEEndpoint
 ```
 
 ---
@@ -142,7 +142,6 @@ APP/
 │   ├── eslint-config/           # Shared ESLint configuration
 │   └── typescript-config/       # Shared strict tsconfig bases
 │
-├── interview_prep/              # Comprehensive technical architecture & interview guides
 ├── pnpm-workspace.yaml          # Monorepo workspace configuration
 ├── turbo.json                   # Turborepo task pipeline & build caching
 └── package.json                 # Root dependencies and scripts
@@ -274,14 +273,21 @@ Ask a semantic question about a processed video.
 
 ---
 
-## 📚 Technical Deep Dives & Interview Documentation
+## 🛡️ Security & Reliability
 
-Looking for detailed architectural explanations, failure modes, or interview walkthroughs? Check out the **[`interview_prep/`](./interview_prep/README.md)** directory:
-* [5-Minute PulseQ System Pitch](./interview_prep/interview_pitch_pulseq.md)
-* [BullMQ & Redis Architecture Deep Dive](./interview_prep/interview_bullmq_and_redis.md)
-* [ChromaDB & RAG Pipeline Deep Dive](./interview_prep/interview_rag_deep_dive.md)
-* [Event-Driven Architecture & SSE Streaming](./interview_prep/interview_event_driven_and_async.md)
-* [Technical Cheat Sheet & Rapid-Fire Q&As](./interview_prep/interview_cheat_sheet.md)
+- **Fixed-Window Rate Limiting:** Protects ingestion endpoints against abuse and API quota depletion using IP-based tracking (`RATE_LIMIT_MAX / RATE_LIMIT_WINDOW`).
+- **Resilient Key Rotation:** Task-specific API key pooling automatically rotates credentials when approaching upstream provider limits.
+- **Strict Tenant Isolation:** Vector searches strictly enforce `{ where: { jobId } }` metadata boundaries to guarantee zero cross-contamination between different video transcripts.
+- **Deterministic Memory Bounds:** Automatic trimming of completed and failed jobs (`removeOnComplete`, `removeOnFail`) combined with strict TTL caching ensures memory predictability in Redis.
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] Export mind maps as SVG / PDF / Markdown.
+- [ ] Multi-lingual transcript translation and bilingual summaries.
+- [ ] Collaborative study rooms with synchronized video playback.
+- [ ] Direct MP4 / MKV local video upload support.
 
 ---
 
